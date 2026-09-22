@@ -18,37 +18,21 @@ git clone git@github.com:gpqhl0071/QuietTimer.git
 cd QuietTimer
 ```
 
-仓库里是源码和说明。可双击运行的 `静时.app` 不提交到 Git，需要在本机编译一次。
+仓库里是源码和说明。应用包不提交到 Git，克隆后运行一次脚本即可。
 
 ## 编译并打开
 
 在项目目录执行：
 
 ```sh
-mkdir -p 静时.app/Contents/MacOS
-
-cat > 静时.app/Contents/Info.plist <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>QuietTimer</string>
-<key>CFBundleIdentifier</key><string>local.penggao.quiettimer</string>
-<key>CFBundleName</key><string>静时</string>
-<key>CFBundleDisplayName</key><string>静时</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.0</string>
-<key>NSHighResolutionCapable</key><true/>
-</dict></plist>
-EOF
-
-xcrun swiftc main.swift -o 静时.app/Contents/MacOS/QuietTimer -framework SwiftUI -framework AppKit
-codesign --force --sign - 静时.app
-open 静时.app
+./build.sh
 ```
 
-以后只改了 `main.swift` 时，重新执行最后两行即可。替换正在运行的应用前，先从菜单栏退出静时，让它把当前计时写入本机。
+脚本会创建 `QuietTimer.app`，编译 `main.swift`，完成本机签名并打开。窗口和菜单里的名字仍是「静时」。
 
-如果系统提示应用无法打开，在项目目录执行 `xattr -cr 静时.app`，然后右键「静时.app」选择「打开」。
+改过源码后，再运行一次 `./build.sh`。如果菜单栏里已经有静时，先选择「退出静时」，让当前计时写入本机，再运行脚本。
+
+如果系统仍提示无法打开，右键 `QuietTimer.app`，选择「打开」。
 
 ## 日常用法
 
@@ -170,16 +154,17 @@ open 静时.app
 ```text
 QuietTimer/
 ├── README.md      本说明
+├── build.sh       一键编译、签名并打开
 ├── main.swift     全部源码：计时、界面、窗口和菜单栏
 ├── 使用说明.md    简要使用笔记
-└── .gitignore     忽略本机编译出的 静时.app
+└── .gitignore     忽略本机编译出的应用包
 ```
 
 计时逻辑在 `ClockModel`，界面在 `TimerView`。改外观时保持 `ClockModel` 的开始、暂停、重置和完成规则不变。
 
 ## 常见情况
 
-**改完源码没有变化。** 先退出菜单栏里的静时，再重新编译并 `codesign`，然后打开新的 `静时.app`。
+**改完源码没有变化。** 先从菜单栏退出静时，再运行 `./build.sh`。
 
 **小浮窗挡住内容。** 把不透明度调低，或拖到屏幕边缘。展开和弹层会尽量留在屏幕可见范围内。
 
