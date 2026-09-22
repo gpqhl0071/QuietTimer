@@ -16,6 +16,96 @@ enum PanelOpacity {
     }
 }
 
+enum Celadon {
+    static let paper = Color(red: 245 / 255, green: 242 / 255, blue: 233 / 255)
+    static let glaze = Color(red: 230 / 255, green: 237 / 255, blue: 229 / 255)
+    static let ink = Color(red: 53 / 255, green: 71 / 255, blue: 63 / 255)
+    static let mist = Color(red: 115 / 255, green: 128 / 255, blue: 118 / 255)
+    static let celadon = Color(red: 112 / 255, green: 141 / 255, blue: 125 / 255)
+    static let line = Color(red: 204 / 255, green: 213 / 255, blue: 201 / 255)
+    static let cinnabar = Color(red: 166 / 255, green: 92 / 255, blue: 76 / 255)
+    static func song(_ size: CGFloat) -> Font { .custom("Songti SC", size: size) }
+    static func time(_ size: CGFloat) -> Font { .system(size: size, weight: .light, design: .monospaced) }
+}
+
+struct PaperGrain: View {
+    var body: some View {
+        Canvas { context, size in
+            var state = 0x51EED
+            func unit() -> CGFloat {
+                state = (state &* 1103515245 &+ 12345) & 0x7fffffff
+                return CGFloat(state % 10000) / 10000
+            }
+            let fiber = GraphicsContext.Shading.color(Celadon.ink.opacity(0.03))
+            let strands = max(14, Int(size.width * size.height / 4200))
+            for _ in 0..<strands {
+                let y = unit() * size.height
+                let x = unit() * size.width
+                let length = 6 + unit() * 22
+                var path = Path()
+                path.move(to: CGPoint(x: x, y: y))
+                path.addLine(to: CGPoint(x: min(size.width, x + length), y: y + (unit() - 0.5) * 0.6))
+                context.stroke(path, with: fiber, lineWidth: 0.35)
+            }
+            let specks = max(8, Int(size.width * size.height / 3200))
+            for _ in 0..<specks {
+                let d = 0.55 + unit() * 0.45
+                let rect = CGRect(x: unit() * size.width, y: unit() * size.height, width: d, height: d)
+                context.fill(Path(ellipseIn: rect), with: .color(Celadon.celadon.opacity(0.05)))
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct BranchSketch: View {
+    var body: some View {
+        Canvas { context, size in
+            let stroke = GraphicsContext.Shading.color(Celadon.celadon.opacity(0.2))
+            var stem = Path()
+            stem.move(to: CGPoint(x: size.width * 0.06, y: size.height * 0.78))
+            stem.addQuadCurve(
+                to: CGPoint(x: size.width * 0.94, y: size.height * 0.22),
+                control: CGPoint(x: size.width * 0.48, y: size.height * 0.98)
+            )
+            context.stroke(stem, with: stroke, lineWidth: 0.7)
+            func leaf(at origin: CGPoint, angle: Double, scale: CGFloat) {
+                var path = Path()
+                path.move(to: .zero)
+                path.addQuadCurve(to: CGPoint(x: 18 * scale, y: 0), control: CGPoint(x: 9 * scale, y: -8 * scale))
+                path.addQuadCurve(to: .zero, control: CGPoint(x: 9 * scale, y: 2.2 * scale))
+                var local = context
+                local.translateBy(x: origin.x, y: origin.y)
+                local.rotate(by: .degrees(angle))
+                local.stroke(path, with: stroke, lineWidth: 0.6)
+            }
+            leaf(at: CGPoint(x: size.width * 0.34, y: size.height * 0.64), angle: -32, scale: 1)
+            leaf(at: CGPoint(x: size.width * 0.58, y: size.height * 0.46), angle: 16, scale: 0.82)
+            leaf(at: CGPoint(x: size.width * 0.76, y: size.height * 0.32), angle: -46, scale: 0.68)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct SealMark: View {
+    var side: CGFloat = 8
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1.2, style: .continuous)
+            .fill(Celadon.cinnabar.opacity(0.14))
+            .overlay(RoundedRectangle(cornerRadius: 1.2, style: .continuous).strokeBorder(Celadon.cinnabar, lineWidth: 0.8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 0.6, style: .continuous)
+                    .strokeBorder(Celadon.cinnabar.opacity(0.9), lineWidth: 0.45)
+                    .padding(side * 0.24)
+            )
+            .frame(width: side, height: side)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
 final class ClockModel: ObservableObject {
     @Published var mode: Session = .focus
     @Published var remaining: TimeInterval = 1500
@@ -120,6 +210,101 @@ final class ClockModel: ObservableObject {
     }
 }
 
+private struct LineIconButton: View {
+    var name: String
+    var help: String
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: name)
+                .font(.system(size: 13, weight: .light))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Celadon.ink)
+        .help(help)
+    }
+}
+
+private struct SlipChrome: ViewModifier {
+    var width: CGFloat
+    func body(content: Content) -> some View {
+        content
+            .padding(20)
+            .frame(width: width, alignment: .leading)
+            .foregroundStyle(Celadon.ink)
+            .background(Celadon.paper)
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Celadon.line, lineWidth: 1).allowsHitTesting(false))
+            .presentationBackground(Celadon.paper)
+            .preferredColorScheme(.light)
+    }
+}
+
+private struct DurationSlip: View {
+    @ObservedObject var clock: ClockModel
+    @Binding var minutes: String
+    @Binding var seconds: String
+    @Binding var presented: Bool
+    @FocusState private var focus: Field?
+    private enum Field: Hashable { case minutes, seconds }
+    private var parsed: Int? { ClockModel.parseDuration(minutes: minutes, seconds: seconds) }
+    private var replacing: Bool { !clock.completed && (clock.running || clock.progress > 0) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("这次，需要多久？").font(Celadon.song(17))
+            HStack(spacing: 8) {
+                field("分钟", text: $minutes, focus: .minutes, width: 78)
+                Text("分").font(.system(size: 13)).foregroundStyle(Celadon.ink)
+                field("秒", text: $seconds, focus: .seconds, width: 58)
+                Text("秒").font(.system(size: 13)).foregroundStyle(Celadon.ink)
+            }
+            Text(parsed == nil ? "请输入 0–999 分、0–59 秒，总时长至少 1 秒。" : replacing ? "开始后将替换当前计时；取消则继续原计时。" : "输入时长，按自己的节奏开始。")
+                .font(.system(size: 12, weight: parsed == nil ? .medium : .regular))
+                .foregroundStyle(Celadon.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button("取消") { presented = false }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Celadon.mist)
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button(replacing ? "替换并开始" : "开始倒计时") {
+                    guard let seconds = parsed else { return }
+                    clock.startCustom(seconds: seconds)
+                    presented = false
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(parsed == nil ? Celadon.mist : Celadon.paper)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(parsed == nil ? Celadon.line : Celadon.celadon, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .disabled(parsed == nil)
+            }
+        }
+        .modifier(SlipChrome(width: 304))
+        .onAppear { DispatchQueue.main.async { focus = .minutes } }
+    }
+    private func field(_ access: String, text: Binding<String>, focus field: Field, width: CGFloat) -> some View {
+        TextField("", text: text)
+            .accessibilityLabel(access)
+            .focused($focus, equals: field)
+            .textFieldStyle(.plain)
+            .font(Celadon.time(22))
+            .multilineTextAlignment(.center)
+            .foregroundStyle(Celadon.ink)
+            .frame(width: width)
+            .padding(.vertical, 8)
+            .background(Celadon.glaze, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(focus == field ? Celadon.celadon : Celadon.line, lineWidth: focus == field ? 1.5 : 1)
+                    .allowsHitTesting(false)
+            )
+    }
+}
+
 struct TimerView: View {
     @ObservedObject var clock: ClockModel
     @State private var settings = false
@@ -128,176 +313,260 @@ struct TimerView: View {
     @State private var secondsInput = "00"
     @State private var confirmReset = false
     @State private var pendingMode: Session?
-    private let ink = Color(red: 0.24, green: 0.29, blue: 0.26)
-    private let muted = Color(red: 0.48, green: 0.51, blue: 0.47)
-    private let accent = Color(red: 0.43, green: 0.52, blue: 0.42)
     var body: some View {
         Group {
             if clock.pinned { compactView } else { fullView }
         }
-        .background { Color(red: 0.97, green: 0.965, blue: 0.945).opacity(clock.opacity).ignoresSafeArea() }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: clock.pinned ? .center : .top)
+        .background {
+            ZStack {
+                Celadon.paper
+                PaperGrain()
+            }
+            .opacity(clock.opacity)
+            .clipShape(RoundedRectangle(cornerRadius: clock.pinned ? 16 : 0, style: .continuous))
+            .ignoresSafeArea()
+        }
+        .overlay {
+            if clock.pinned {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Celadon.line, lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
+        }
         .preferredColorScheme(.light)
         .alert("结束当前这一段计时？", isPresented: $confirmReset) {
             Button("取消", role: .cancel) { pendingMode = nil }
             Button("重新开始", role: .destructive) { if let next = pendingMode { clock.select(next) } else { clock.reset() }; pendingMode = nil }
         } message: { Text("未完成的专注不会计入今日次数。") }
     }
-    func timeButton(size: CGFloat) -> some View {
-        Button {
-            minutesInput = String(clock.configuredSeconds / 60)
-            secondsInput = String(format: "%02d", clock.configuredSeconds % 60)
-            editingDuration = true
-        } label: {
-            VStack(spacing: 2) {
-                Text(clock.label).font(.system(size: size, weight: .light, design: .rounded))
-                    .monospacedDigit().minimumScaleFactor(0.7).lineLimit(1).foregroundStyle(ink)
-                Label("设置时长", systemImage: "pencil").font(.system(size: 9)).foregroundStyle(muted)
-            }
-        }.buttonStyle(.plain).help("输入时长并开始倒计时")
-            .accessibilityLabel("设置倒计时时长，剩余 " + clock.label)
-            .popover(isPresented: $editingDuration) { durationEditor }
+    func openDuration() {
+        minutesInput = String(clock.configuredSeconds / 60)
+        secondsInput = String(format: "%02d", clock.configuredSeconds % 60)
+        editingDuration = true
     }
-    var durationEditor: some View {
-        let parsed = ClockModel.parseDuration(minutes: minutesInput, seconds: secondsInput)
-        let replacing = !clock.completed && (clock.running || clock.progress > 0)
-        return VStack(alignment: .leading, spacing: 16) {
-            Text("这次，需要多久？").font(.system(size: 14, weight: .medium))
-            HStack(spacing: 10) {
-                TextField("分钟", text: $minutesInput).accessibilityLabel("分钟")
-                    .frame(width: 74)
-                Text("分")
-                TextField("秒", text: $secondsInput).accessibilityLabel("秒")
-                    .frame(width: 54)
-                Text("秒")
-            }.textFieldStyle(.roundedBorder).font(.system(size: 20, design: .rounded))
-            Text(parsed == nil ? "请输入 0–999 分、0–59 秒，总时长至少 1 秒。" : replacing ? "开始后将替换当前计时；取消则继续原计时。" : "输入时长，按自己的节奏开始。")
-                .font(.system(size: 11)).foregroundStyle(parsed == nil ? Color.red : muted)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Button("取消") { editingDuration = false }.keyboardShortcut(.cancelAction)
-                Spacer()
-                Button(replacing ? "替换并开始" : "开始倒计时") {
-                    guard let seconds = parsed else { return }
-                    clock.startCustom(seconds: seconds)
-                    editingDuration = false
-                }.buttonStyle(.borderedProminent).tint(ink).disabled(parsed == nil)
+    func primaryAction() { if clock.completed { clock.next() } else { clock.toggle() } }
+    func requestReset() {
+        if clock.running || (clock.progress > 0 && !clock.completed) { pendingMode = nil; confirmReset = true }
+        else { clock.reset() }
+    }
+    func requestMode(_ mode: Session) {
+        if clock.mode != mode && (clock.running || clock.progress > 0) && !clock.completed { pendingMode = mode; confirmReset = true }
+        else { clock.select(mode) }
+    }
+    var primaryTitle: String {
+        if clock.completed { return clock.mode == .focus ? "去休息" : "回到专注" }
+        if clock.running { return "暂停" }
+        if clock.progress > 0 { return "继续" }
+        return clock.mode == .focus ? "开始专注" : "开始休息"
+    }
+    var primarySymbol: String { clock.completed ? "arrow.right" : clock.running ? "pause.fill" : "play.fill" }
+    var primaryHelp: String { clock.completed ? "进入下一段" : clock.running ? "暂停" : "开始或继续" }
+    func timeButton(size: CGFloat) -> some View {
+        Button(action: openDuration) {
+            VStack(spacing: 2) {
+                Text(clock.label)
+                    .font(Celadon.time(size))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.62)
+                    .lineLimit(1)
+                    .foregroundStyle(Celadon.ink)
+                Label("设置时长", systemImage: "pencil")
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(Celadon.ink)
             }
-        }.padding(20).frame(width: 290).foregroundStyle(ink)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("输入时长并开始倒计时")
+        .accessibilityLabel("设置倒计时时长，剩余 " + clock.label)
+        .popover(isPresented: $editingDuration, arrowEdge: .bottom) {
+            DurationSlip(clock: clock, minutes: $minutesInput, seconds: $secondsInput, presented: $editingDuration)
+        }
     }
     var compactView: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
             HStack(spacing: 6) {
-                Circle().fill(accent).frame(width: 5, height: 5)
-                Text(clock.mode.rawValue + (clock.completed ? " · 已完成" : clock.running ? "" : " · 已暂停"))
-                    .font(.system(size: 10, weight: .medium))
-                Spacer()
-                Button { settings.toggle() } label: { Image(systemName: "slider.horizontal.3").frame(width: 24, height: 24) }
-                    .help("设置").popover(isPresented: $settings) { settingsView }
-                Button { clock.pinned = false } label: { Image(systemName: "pin.fill").frame(width: 24, height: 24) }
-                    .help("取消置顶，展开完整窗口")
-            }.foregroundStyle(muted)
+                SealMark(side: 8)
+                Text(clock.mode.rawValue).font(Celadon.song(13)).foregroundStyle(Celadon.ink).lineLimit(1)
+                if clock.completed {
+                    Text("已完成").font(.system(size: 11, weight: .medium)).foregroundStyle(Celadon.cinnabar).lineLimit(1)
+                } else if !clock.running {
+                    Text("已暂停").font(.system(size: 11, weight: .medium)).foregroundStyle(Celadon.ink).lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                LineIconButton(name: "slider.horizontal.3", help: "设置") { settings.toggle() }
+                    .popover(isPresented: $settings) { settingsView }
+                LineIconButton(name: "pin", help: "取消置顶，展开完整窗口") { clock.pinned = false }
+            }
+            Spacer(minLength: 4)
             timeButton(size: 48)
-            HStack(spacing: 12) {
+            Spacer(minLength: 4)
+            HStack(spacing: 10) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(accent.opacity(0.15))
-                        Capsule().fill(accent).frame(width: geo.size.width * clock.progress)
+                        Capsule().fill(Celadon.glaze)
+                        Capsule().fill(Celadon.celadon).frame(width: max(0, geo.size.width * clock.progress))
                     }
-                }.frame(height: 3)
-                Button { if clock.completed { clock.next() } else { clock.toggle() } } label: {
-                    Image(systemName: clock.completed ? "arrow.right" : clock.running ? "pause.fill" : "play.fill")
-                        .font(.system(size: 11, weight: .medium)).frame(width: 30, height: 28)
-                        .background(ink, in: RoundedRectangle(cornerRadius: 8)).foregroundStyle(.white)
-                }.help(clock.completed ? "进入下一段" : clock.running ? "暂停" : "开始或继续")
-                Button {
-                    if clock.running || (clock.progress > 0 && !clock.completed) { pendingMode = nil; confirmReset = true } else { clock.reset() }
-                } label: { Image(systemName: "arrow.counterclockwise").frame(width: 24, height: 28) }
-                    .foregroundStyle(muted).help("重新计时")
+                }
+                .frame(height: 3)
+                .accessibilityLabel("进度")
+                .accessibilityValue("\(Int((clock.progress * 100).rounded()))%")
+                Button(action: primaryAction) {
+                    Image(systemName: primarySymbol)
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 30, height: 28)
+                        .background(Celadon.celadon, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .foregroundStyle(Color.white)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(primaryHelp)
+                LineIconButton(name: "arrow.counterclockwise", help: "重新计时", action: requestReset)
             }
-        }.buttonStyle(.plain).padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 16).frame(width: 224)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     var fullView: some View {
         VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: 7) { Circle().fill(accent).frame(width: 7, height: 7); Text("静时").font(.system(size: 14, weight: .medium)) }
+            HStack(spacing: 8) {
+                SealMark(side: 11)
+                Text("静时").font(Celadon.song(18)).foregroundStyle(Celadon.ink)
                 Spacer()
-                Button { clock.pinned.toggle() } label: { Image(systemName: clock.pinned ? "pin.fill" : "pin") }
-                    .help(clock.pinned ? "取消窗口置顶" : "窗口置顶")
-                Button { settings.toggle() } label: { Image(systemName: "slider.horizontal.3") }.help("设置")
+                LineIconButton(name: clock.pinned ? "pin.fill" : "pin", help: clock.pinned ? "取消窗口置顶" : "窗口置顶") { clock.pinned.toggle() }
+                LineIconButton(name: "slider.horizontal.3", help: "设置") { settings.toggle() }
                     .popover(isPresented: $settings) { settingsView }
-            }.buttonStyle(.plain).foregroundStyle(muted).padding(.bottom, 32)
+            }
+            .padding(.bottom, 26)
             HStack(spacing: 4) {
                 ForEach(Session.allCases, id: \.self) { mode in
-                    Button {
-                        if clock.mode != mode && (clock.running || clock.progress > 0) && !clock.completed { pendingMode = mode; confirmReset = true }
-                        else { clock.select(mode) }
-                    } label: {
-                        Text(mode.rawValue).font(.system(size: 12, weight: clock.mode == mode ? .medium : .regular))
-                            .frame(maxWidth: .infinity).padding(.vertical, 9)
-                            .background(clock.mode == mode ? Color.white.opacity(0.9) : Color.clear, in: RoundedRectangle(cornerRadius: 9))
-                    }.buttonStyle(.plain).foregroundStyle(clock.mode == mode ? ink : muted)
+                    Button { requestMode(mode) } label: {
+                        Text(mode.rawValue)
+                            .font(Celadon.song(13))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(clock.mode == mode ? Celadon.ink : Celadon.mist)
+                            .background(clock.mode == mode ? Celadon.paper : Color.clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .strokeBorder(clock.mode == mode ? Celadon.line : Color.clear, lineWidth: 0.8)
+                                    .allowsHitTesting(false)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
-            }.padding(4).background(Color.black.opacity(0.035), in: RoundedRectangle(cornerRadius: 13))
+            }
+            .padding(4)
+            .background(Celadon.glaze, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(Celadon.line, lineWidth: 0.8).allowsHitTesting(false))
             ZStack {
-                Circle().stroke(accent.opacity(0.12), lineWidth: 3)
-                Circle().trim(from: 0, to: clock.progress).stroke(accent.opacity(0.8), style: StrokeStyle(lineWidth: 3, lineCap: .round)).rotationEffect(.degrees(-90))
-                VStack(spacing: 9) {
+                Circle().stroke(Celadon.line, lineWidth: 1)
+                Circle().stroke(Celadon.celadon.opacity(0.28), lineWidth: 2.5).padding(9)
+                Circle()
+                    .trim(from: 0, to: clock.progress)
+                    .stroke(Celadon.celadon, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .padding(9)
+                VStack(spacing: 8) {
                     Text(clock.completed ? "已完成" : clock.running ? "正在\(clock.mode.rawValue)" : clock.progress > 0 ? "已暂停" : "准备好就开始")
-                        .font(.system(size: 11)).tracking(2).foregroundStyle(muted)
-                    timeButton(size: 57)
-                    Text(clock.mode == .focus ? "一次，只做一件事" : "呼吸 · 伸展 · 喝点水").font(.system(size: 11)).foregroundStyle(muted)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(clock.completed ? Celadon.cinnabar : Celadon.ink)
+                    timeButton(size: 52)
+                    Text(clock.mode == .focus ? "一次，只做一件事" : "呼吸 · 伸展 · 喝点水")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Celadon.mist)
                 }
-            }.frame(width: 232, height: 232).padding(.top, 27).padding(.bottom, 24)
-            TextField("这一刻，想专注什么？", text: $clock.task)
-                .textFieldStyle(.plain).font(.system(size: 13)).multilineTextAlignment(.center).foregroundStyle(ink)
-                .padding(.horizontal, 8).padding(.bottom, 23)
+                .padding(.horizontal, 28)
+            }
+            .frame(width: 228, height: 228)
+            .padding(.top, 22)
+            .padding(.bottom, 18)
+            TextField("", text: $clock.task, prompt: Text("这一刻，想专注什么？").foregroundStyle(Celadon.mist))
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Celadon.ink)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(Celadon.glaze, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Celadon.line, lineWidth: 1).allowsHitTesting(false))
             HStack(spacing: 12) {
-                Button {
-                    if clock.completed { clock.next() } else { clock.toggle() }
-                } label: {
+                Button(action: primaryAction) {
                     HStack(spacing: 8) {
-                        Image(systemName: clock.completed ? "arrow.right" : clock.running ? "pause.fill" : "play.fill").font(.system(size: 10))
-                        Text(clock.completed ? (clock.mode == .focus ? "去休息" : "回到专注") : clock.running ? "暂停" : clock.progress > 0 ? "继续" : "开始专注".replacingOccurrences(of: "专注", with: clock.mode == .focus ? "专注" : "休息"))
-                    }.font(.system(size: 13, weight: .medium)).frame(maxWidth: .infinity).frame(height: 43)
-                        .background(ink, in: RoundedRectangle(cornerRadius: 12)).foregroundStyle(.white)
-                }.buttonStyle(.plain).keyboardShortcut(.return, modifiers: [])
-                Button {
-                    if clock.running || (clock.progress > 0 && !clock.completed) { pendingMode = nil; confirmReset = true } else { clock.reset() }
-                } label: { Image(systemName: "arrow.counterclockwise").frame(width: 43, height: 43).background(Color.black.opacity(0.04), in: RoundedRectangle(cornerRadius: 12)) }
-                    .buttonStyle(.plain).help("重新计时").foregroundStyle(muted)
+                        Image(systemName: primarySymbol).font(.system(size: 11, weight: .semibold))
+                        Text(primaryTitle)
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 43)
+                    .background(Celadon.celadon, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .foregroundStyle(Color.white)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.return, modifiers: [])
+                .help(primaryHelp)
+                Button(action: requestReset) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 13, weight: .light))
+                        .frame(width: 43, height: 43)
+                        .foregroundStyle(Celadon.ink)
+                        .background(Celadon.glaze.opacity(0.45), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Celadon.line, lineWidth: 1).allowsHitTesting(false))
+                }
+                .buttonStyle(.plain)
+                .help("重新计时")
             }
+            .padding(.top, 16)
             HStack(spacing: 6) {
-                ForEach(0..<4, id: \.self) { i in Circle().fill(i < (clock.today == 0 ? 0 : (clock.today - 1) % 4 + 1) ? accent : accent.opacity(0.18)).frame(width: 5, height: 5) }
-                Text("今天已完成 \(clock.today) 次专注").font(.system(size: 10)).padding(.leading, 4)
-            }.foregroundStyle(muted).padding(.top, 25)
-            Text(clock.completed ? "做得很好。下一段时间，由你决定。" : clock.mode.hint).font(.system(size: 10)).foregroundStyle(muted.opacity(0.8)).padding(.top, 12)
-        }.padding(.horizontal, 32).padding(.top, 20).padding(.bottom, 24)
-            .frame(width: 360)
-            .background {
-                Color(red: 0.97, green: 0.965, blue: 0.945).opacity(clock.opacity).ignoresSafeArea()
+                let marks = clock.today == 0 ? 0 : (clock.today - 1) % 4 + 1
+                ForEach(0..<4, id: \.self) { index in
+                    Circle().fill(index < marks ? Celadon.celadon : Celadon.line).frame(width: 5, height: 5)
+                }
+                Text("今天已完成 \(clock.today) 次专注").font(.system(size: 11)).foregroundStyle(Celadon.ink).padding(.leading, 4)
             }
-            .preferredColorScheme(.light)
-
+            .padding(.top, 18)
+            Text(clock.completed ? "做得很好。下一段时间，由你决定。" : clock.mode.hint)
+                .font(.system(size: 11))
+                .foregroundStyle(Celadon.mist)
+                .multilineTextAlignment(.center)
+                .padding(.top, 8)
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(alignment: .bottomTrailing) {
+            BranchSketch().frame(width: 132, height: 46).padding(.trailing, 16).padding(.bottom, 8)
+        }
     }
     var settingsView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("按自己的节奏来").font(.system(size: 14, weight: .medium))
+            Text("按自己的节奏来").font(Celadon.song(17))
             ForEach(Array(Session.allCases.enumerated()), id: \.offset) { index, mode in
-                Stepper(value: $clock.durations[index], in: 1...120) { Text("\(mode.rawValue)　\(clock.durations[index]) 分钟").font(.system(size: 12)) }
+                Stepper(value: $clock.durations[index], in: 1...120) {
+                    Text("\(mode.rawValue)　\(clock.durations[index]) 分钟").font(.system(size: 13)).foregroundStyle(Celadon.ink)
+                }
             }
-            Toggle("结束时播放轻提示音", isOn: $clock.sound).font(.system(size: 12))
+            Toggle("结束时播放轻提示音", isOn: $clock.sound).font(.system(size: 13)).tint(Celadon.celadon)
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("窗口不透明度").font(.system(size: 12))
+                    Text("窗口不透明度").font(.system(size: 13))
                     Spacer()
-                    Text("\(Int((clock.opacity * 100).rounded()))%").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("\(Int((clock.opacity * 100).rounded()))%").font(.system(size: 13, weight: .medium)).monospacedDigit()
                 }
-                Slider(value: $clock.opacity, in: PanelOpacity.minimum...PanelOpacity.maximum)
+                Slider(value: $clock.opacity, in: PanelOpacity.minimum...PanelOpacity.maximum).tint(Celadon.celadon)
             }
             Text("时长调整从下一段计时生效。\n调低不透明度后可以看到后面的页面，数字和按钮保持清晰。\n关闭窗口后，仍会在菜单栏计时。\n电脑睡眠时无法响铃，唤醒后会更新。")
-                .font(.system(size: 10)).foregroundStyle(.secondary).lineSpacing(4)
-        }.padding(22).frame(width: 280)
-            .onDisappear { clock.save(); if !clock.running && clock.progress == 0 { clock.reset() } }
+                .font(.system(size: 11))
+                .foregroundStyle(Celadon.mist)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .modifier(SlipChrome(width: 292))
+        .onDisappear { clock.save(); if !clock.running && clock.progress == 0 { clock.reset() } }
     }
 }
 
@@ -347,9 +616,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let top = window.frame.maxY
         let left = window.frame.minX
         window.level = clock.pinned ? .floating : .normal
+        window.hasShadow = true
         for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             window.standardWindowButton(button)?.isHidden = clock.pinned
         }
+        if let layer = window.contentView?.layer {
+            layer.cornerRadius = 0
+            layer.masksToBounds = false
+        }
+        window.invalidateShadow()
         window.contentView?.layoutSubtreeIfNeeded()
         let size = clock.pinned ? NSSize(width: 224, height: 184) : NSSize(width: 360, height: 594)
         window.setContentSize(size)
